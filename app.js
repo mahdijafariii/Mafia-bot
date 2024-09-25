@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const knex = require('./config/db')
 const redis = require('redis')
 const actions = require('./actions/action')
+const controller = require('./controller')
 const client = redis.createClient();
 client.connect();
 
@@ -30,12 +31,18 @@ bot.start(async (ctx) => {
                     ctx.reply('به اتاق بازی اضافه شدی، منتظر بمون تا مدیر اتاق بازی را شروع کنه🔃\n وقتی بازی شروع بشه بهت خبر میدم 💓 ')
 
                     if ((roomMemberCount.length+1) === room.member_count){
-                        ctx.reply(`همه پلیر ها اومدن ⭐`,(
-                            Markup.inlineKeyboard([
-                                Markup.button.callback('شروع بازی ⭐', 'start_game'),
-                                Markup.button.callback('لغو بازی‼️', 'cancel_game')
-                            ])
-                        ) ,{ chat_id : room.owner_room})
+                        ctx.reply(`همه پلیر ها اومدن ⭐`,{
+                                chat_id : room.owner_room,
+                                reply_markup : {
+                                    inline_keyboard : [
+                                        [
+                                                    Markup.button.callback('شروع بازی ⭐', 'start_game'),
+                                                    Markup.button.callback('لغو بازی‼️', 'cancel_game')
+                                                ]
+                                    ]
+                                }
+                            }
+                        )
                     }
                     else{
                         ctx.reply(`کاربر جدیدی به اتاق بازی اضافه شد ، ظرفیت باقی مانده ${room.member_count - (roomMemberCount.length + 1)} / ${room.member_count}`, { chat_id : room.owner_room})
@@ -128,8 +135,26 @@ bot.action('start_game' , async (ctx)=>{
     const updateRoom = await knex("rooms").where({owner_room: userId}).orderBy('id', 'DESC').limit(1).update({status : 'started'});
     const players = await knex('room_member').where({room_code : room.room_code}).select("member_id","name")
 
+    const totalPlayers = room.member_count
+    const mafiaCount = room.mafia_count
+
+    let roles = []
+
+    for (i = 0 ; i < mafiaCount ; i++) roles.push('mafia')
+    for (i = 0 ; i < (totalPlayers - mafiaCount) ; i++) roles.push('shahr')
+
+
     for(const player of players){
-        ctx.reply('بازی شروع شد 🔍', {chat_id : player.member_id})
+        const role = controller.randomRole(roles)
+        if (role === "shahr"){
+            ctx.reply('بازی شروع شد 🔍', {chat_id : player.member_id})
+            ctx.reply('نقشت در بازی شهرورنده 🥰', {chat_id : player.member_id})
+        }
+        else {
+            ctx.reply('بازی شروع شد 🔍', {chat_id : player.member_id})
+            ctx.reply('نقشت در بازی مافیاست 🫣', {chat_id : player.member_id})
+        }
+        const updateRole = await knex('room_member').where({room_code : room.room_code ,member_id : player.member_id}).update({role : role})
     }
 
 })
