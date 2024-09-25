@@ -112,15 +112,7 @@ bot.action('edit_info',async (ctx)=>{
     await actions.edit_info(ctx,client)
 })
 bot.action(`create_room`, async (ctx) => {
-    const userId = ctx.chat.id
-    const newRoom = await knex("rooms").insert({
-        owner_room: userId,
-        create_at: Math.floor(Date.now() / 1000),
-        room_code : uuidv4(),
-    })
-
-    await client.setEx(`user:${userId}:owner_room`, 90, 'member_count')
-    ctx.reply('حالا تعداد بازیکنان را وارد کن :')
+    await actions.create_room(ctx,client,knex)
 })
 bot.action('previous',async (ctx) =>{
     await actions.previous(ctx,knex)
@@ -128,6 +120,18 @@ bot.action('previous',async (ctx) =>{
 
 bot.action('profile',async (ctx) =>{
     await actions.profile(ctx)
+})
+
+bot.action('start_game' , async (ctx)=>{
+    const userId = ctx.chat.id
+    const room = await knex("rooms").where({owner_room: userId}).orderBy('id', 'DESC').first();
+    const updateRoom = await knex("rooms").where({owner_room: userId}).orderBy('id', 'DESC').limit(1).update({status : 'started'});
+    const players = await knex('room_member').where({room_code : room.room_code}).select("member_id","name")
+
+    for(const player of players){
+        ctx.reply('بازی شروع شد 🔍', {chat_id : player.member_id})
+    }
+
 })
 
 
