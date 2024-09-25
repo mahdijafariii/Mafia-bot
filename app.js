@@ -92,14 +92,7 @@ bot.action('previous',async (ctx) =>{
 })
 
 bot.action('profile',async (ctx) =>{
-    const user = await knex("users").where({user_name : ctx.chat.id}).first()
-    ctx.editMessageText('اطلاعات شما به شرح زیر است : \n' +
-        `نام کاربری : ${ctx.chat.first_name} 
-        نام مستعار در بازی :${user.nick_name} `,
-        Markup.inlineKeyboard(
-            [Markup.button.callback('تغییر نام کاربری', "edit_info"),
-                Markup.button.callback('بازگشت ',"previous")]
-        ))
+    await actions.profile(ctx)
 })
 
 
