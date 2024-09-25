@@ -13,12 +13,48 @@ const bot = new Telegraf(env.BOT_TOKEN)
 bot.start(async (ctx) => {
     const invited_code = ctx.payload
     if (invited_code){
-        const invited_room = await knex('room_member').insert({
-            member_id : ctx.chat.id,
-            room_id : invited_code,
-            name : ctx.chat.first_name
-        })
-        ctx.reply('به اتاق بازی اضافه شدی، منتظر بمون تا مدیر اتاق بازی را شروع کنه🔃\n وقتی بازی شروع بشه بهت خبر میدم 💓 ')
+        const room = await knex("rooms").where({room_code : invited_code , status : "pending"}).first();
+        const roomMemberCount = await knex('room_member').where({room_code : room.room_code})
+        if (room){
+            if (roomMemberCount.length < room.member_count){
+                const inviteBefore =  await knex('room_member').where({
+                    member_id : ctx.chat.id,
+                    room_code : invited_code,
+                }).first();
+                if(!inviteBefore){
+                    const invited_user = await knex('room_member').insert({
+                        member_id : ctx.chat.id,
+                        room_code : invited_code,
+                        name : ctx.chat.first_name
+                    })
+                    ctx.reply('به اتاق بازی اضافه شدی، منتظر بمون تا مدیر اتاق بازی را شروع کنه🔃\n وقتی بازی شروع بشه بهت خبر میدم 💓 ')
+
+                    if ((roomMemberCount.length+1) === room.member_count){
+                        ctx.reply(`همه پلیر ها اومدن ⭐`,(
+                            Markup.inlineKeyboard([
+                                Markup.button.callback('شروع بازی ⭐', 'start_game'),
+                                Markup.button.callback('لغو بازی‼️', 'cancel_game')
+                            ])
+                        ) ,{ chat_id : room.owner_room})
+                    }
+                    else{
+                        ctx.reply(`کاربر جدیدی به اتاق بازی اضافه شد ، ظرفیت باقی مانده ${room.member_count - (roomMemberCount.length + 1)} / ${room.member_count}`, { chat_id : room.owner_room})
+                    }
+                }
+                else {
+                    ctx.reply("شما قبلا به این اتاق اضافه شده اید ، لطفا تا شروع بازی منتظر بمانید⌛")
+                }
+            }
+            else {
+                ctx.reply('ظرفیت اتاق تکمیل است ! 😭')
+
+            }
+
+        }
+        else{
+            ctx.reply('اتاق نامعتبر است 😭')
+        }
+
     }
     else {
         ctx.reply(`به ربات بازی مافیا خوش آمدید 🌿`,
@@ -58,7 +94,6 @@ bot.on(`text`, async (ctx) => {
         }
 
     }
-
     const editAction = await client.get(`user:${userId}:user_name`);
     if (editAction == "edit_info") {
         await knex("users").update(
