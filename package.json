@@ -1,0 +1,15 @@
+{
+  "name": "mafia-bot",
+  "version": "1.0.0",
+  "description": "Mafia bot game that you can play with your friends on Telegram",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "telegraf": "^4.16.3"
+  }
+}
